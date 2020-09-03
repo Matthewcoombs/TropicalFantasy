@@ -1,0 +1,11 @@
+  {  
+    name: "IX UI Services",
+    script: "manage.py",
+    args: ["runserver", "6607", "--settings=ix_api_tool.environments.bartender"],
+    exec_mode: "fork",
+    instances: "1",
+    wait_ready: true,
+    autorestart: false,
+    max_restarts: 5,
+    interpreter: "/opt/ix_api_tool/venv/bin/python"
+  }

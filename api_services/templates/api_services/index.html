@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <script src="https://kit.fontawesome.com/142226acd0.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+    <title>Index API Services</title>
+</head>
+<body>
+    <!-- bootstrap page banner/jumptron -->
+    <div class="jumbotron jumbotron-fluid bg-primary">
+        <div class="container">
+          <h1 class="display-4 text-light">Tropical Fantasy <i class="fas fa-dove"></i></h1>
+          <p class="lead text-light">Please see all available services below.</p>
+        </div>
+    </div>
+    
+    <!-- bootstrap grid layout -->
+    <div class="container">
+        <div class="row">
+
+          <!-- SideBar -->
+          <div class="col-3">
+            <!-- Library Service Links -->
+            <div class="btn-group-vertical">
+              <div class="card text-black bg-light mb-3">
+                <div class="card-header"><h4>Library Services</h4></div>
+              </div>
+              <!-- <h3>Library Services</h3> -->
+              <a class="btn btn-info" href="{% url 'gen_placeholder' %}" role="button">Generate Placeholder Library</a>
+              <a class="btn btn-info" href="{% url 'gen_customLibrary' %}" role="button">Custom Library Generator</a>
+              <a class="btn btn-info" href="{% url 'add_or_remove_htSlots' %}" role="button">Add or Remove HeaderTag Slots</a>
+              <a class="btn btn-info" href="{% url 'copy-library' %}" role="button">Copy Library</a>
+              <a class="btn btn-info" href="{% url 'mass-launcher' %}" role="button">Mini Mass-Launcher</a>
+              <br>
+
+            <!-- SiteID Service Links -->
+              <div class="card text-black bg-light mb-3">
+                <div class="card-header"><h4>SiteID Services </h4></div>
+              </div>
+              <a class="btn btn-info" href="{% url 'set_standard_blocks' %}" role="button">Set Standard siteID Blocks</a>
+              <a class="btn btn-info" href="{% url 'update_site_categories' %}" role="button">Update SiteID Categories</a>
+              <a class="btn btn-info" href="{% url 'clone_siteIDs' %}" role="button">SiteID Cloner</a>
+            </div>
+          </div>
+
+          <!-- Page Content -->
+          <div class="col-lg">
+            {% if title %}
+            <div style="text-align: center;">
+               <h2>{{ title }}</h2>
+            </div>
+            {% endif %}
+            
+            <!-- Service Response message -->
+            <div id="notification" role="alert" style="display: none;">
+            </div>
+            
+            <!-- CSV Response -->
+            <div id="csv_response" style="display: none;">
+              <p id="csv_download" class="btn-block btn-lg btn-success" style="text-align: center;">Download CSV Response</p>
+            </div>
+
+            <!-- Template Download Links -->
+            {% if template %}
+            <div style="text-align: center;">
+              <a href="{% url template %}" class="btn btn-primary btn-lg" role="button">Download Template</a>
+            </div>
+            {% endif %}
+
+            <!-- input form -->
+            {% if form %}
+            {% load crispy_forms_tags %}
+                <form id="user_input" method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    <p id="button" class="btn-block btn-lg btn-primary" style="text-align: center;">Submit</p>
+                </form>
+            {% endif %}
+
+            {% if update_items %}
+                <h1>Properties Updated: </h1>
+                <ul class="list-group">
+                {% for item in update_items %}
+                <li class="list-group-item">{{ item }}</li>
+                {% endfor %}
+                </ul>
+            {% endif%}
+          </div>
+
+
+        </div>
+    </div> 
+
+    <!-- accompanying bootstrap javascript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+
+    <!-- AJAX POST -->
+    <script>
+      $(document).ready(function() {
+
+        const url = window.location.href;
+
+        // setting adding or removing htSlot form logic
+        if (url.includes('addRemoveHtSlots')) {
+          //let add_or_remove_flag = $("form#user_input #id_add_or_remove_slots").prevObject[0].activeElement;
+          
+
+          $("#id_add_or_remove_slots")[0].onchange = function() {
+            $("form#user_input :input").each(function() {
+                let input = $(this);
+
+                if (!["user_ID", "configID", "add_or_remove_slots", "Template_file"].includes(input[0].name) && $("#id_add_or_remove_slots")[0].value === 'delete') {
+                  $(input).hide("slow");
+                }
+                else {
+                  $(input).show("slow");
+                }
+              });
+          }
+        }
+
+        // creating a reference to the response(s) data for later use
+        let response_data;
+
+        function submissionNotification() {
+          let notification_element = $("#notification");
+          notification_element.removeClass();
+          notification_element.empty();
+          notification_element.fadeIn(500);
+          notification_element.css({'text-align': 'center'});
+          notification_element.addClass("alert alert-success text-white bg-info");
+          notification_element.append('<h4 class="alert-heading"><strong> Form submitted </strong></h4>');
+          $('#button').hide();
+        }
+
+        function clear_form_fields() {
+          // Clearing the response
+          $("form#user_input :input").each(function() {
+            let input = $(this);
+            if (input[0].files) {
+              input.val('');
+            }
+            else if (input[0].name !== 'csrfmiddlewaretoken' && input[0].className !== "select form-control") {
+              input.val('');
+            }
+          });
+        }
+
+        function fadeIn_button() {
+          $('#button').fadeIn(500);
+          let notification_element = $("#notification");
+          notification_element.removeClass();
+          notification_element.empty();
+          notification_element.fadeIn(500);
+          notification_element.css({'text-align': 'center'});
+
+          return notification_element;
+        }
+
+        $('#button').click(function() {
+          let formData = new FormData();
+          $("form#user_input :input").each(function() {
+            let input = $(this);
+
+            if (input[0].files) {
+              formData.append(input[0].name, input[0].files[0]);
+            }
+            else {
+              formData.append(input[0].name, input.val());
+              }
+            });
+
+          $.ajax({
+            type: "POST",
+            url: url,
+            dataType: "json",
+            processData: false,
+            contentType: false,
+            enctype: "multipart/form-data",
+            data: formData,
+            notification: submissionNotification(),
+            success: function(data) {
+
+              let notification_element = fadeIn_button();
+              if (data.success) {
+                // Adding in csv_response downloader upon succesful siteID cloning
+                if (url.includes('cloneSiteIDs')) {
+                  $('#csv_response').fadeIn(500);
+                  response_data = data.success;
+                  clear_form_fields();
+                }
+                else {
+                  notification_element.addClass("alert alert-success text-white bg-success");
+                  notification_element.append('<h4 class="alert-heading"><strong> Success! </strong></h4><p> The following properties have been updated: ' + data.success + '</p>');
+                  clear_form_fields();
+                }
+              }
+              else if (data.error) {
+                notification_element.addClass("alert alert-danger text-white bg-danger");
+                notification_element.append('<h4 class="alert-heading"><strong> Error! </strong></h4><p>' + data.error + '</p>');
+                clear_form_fields();
+              }
+
+            },
+            error: function() {
+              fadeIn_button();
+              notification_element.addClass("alert alert-danger text-white bg-danger");
+              notification_element.append('<h4 class="alert-heading"><strong> Error! </strong></h4><p> Failed to receive a proper response from the Server! </p>');
+            }
+            
+          });
+
+          $("#csv_download").click(function() {
+            let rows = [];
+            let all_clonedIDs = [];
+            response_data.forEach(function (object) {
+                column = [];
+                column.push(object[0]);
+                column.push(object[1]);
+                rows.push(column);
+
+                let siteID = object[1];
+                all_clonedIDs.push(' '+ siteID.toString())
+            });
+
+            final_row = ['All SiteIDs']
+            final_row.push('"' + all_clonedIDs.join(',') + '"')
+            console.log(final_row);
+            rows.push(final_row);
+            let csvContent = "Site Name(s),SiteID\r\n";
+
+            rows.forEach(function(rowArray) {
+                let row = rowArray.join(",");
+                csvContent += row + "\r\n";
+            });
+
+            var downloadLink = document.createElement("a");
+            var blob = new Blob(["\ufeff", csvContent]);
+            var url = URL.createObjectURL(blob);
+            downloadLink.href = url;
+            downloadLink.download = "cloned_siteIDs.csv";
+
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+            });
+          });
+        });
+    </script>
+</body>
+</html>
